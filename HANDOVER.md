@@ -95,6 +95,10 @@ Browser ──HTTPS──► reverse proxy ──► homepage-config (Node 22, :
 | `server/envfile.js` | Read/update Homepage's `.env` (managed keys only, comments kept, backups) and the restart trigger |
 | `scripts/build-catalog.mjs` | Parses `docs/widgets/services/*.md` into the widget catalog JSON |
 | `scripts/install-lxc.sh` | LXC/systemd installer: install, update, `--fix-permissions`, `--uninstall [--purge]` |
+| `README.md` | Short overview: features, screenshots, install picker, quick start |
+| `docs/install-lxc.md`, `docs/install-docker.md`, `docs/install-manual.md` | One guide per install method |
+| `docs/configuration.md`, `docs/troubleshooting.md` | Sign-in, linking, HTTPS, icons, backups, settings reference, security; problem/fix table |
+| `docs/images/*.png` | README screenshots (taken with demo data, 1440×900) |
 | `public/js/main.js` | App shell, nav, router, unsaved-changes guard, icon picker host |
 | `public/js/api.js` | fetch wrapper (adds `X-HC-Request: 1`) |
 | `public/js/ui.js` | Form controls, modal, toasts, save bar, icon input/preview, YAML field |
@@ -329,7 +333,7 @@ The app never gets root rights:
 
 ### Next steps / ideas 🔜
 
-- [ ] **Owner:** on the Homepage LXC, run `git clone https://github.com/ckegels/homepage-config.git /root/homepage-config && cd /root/homepage-config && ./scripts/install-lxc.sh` (README §2). Then create the account with the setup token, enable 2FA, and add the "Homepage Config" tile to Homepage (README §6).
+- [ ] **Owner:** on the Homepage LXC, run `git clone https://github.com/ckegels/homepage-config.git /root/homepage-config && cd /root/homepage-config && ./scripts/install-lxc.sh` ([docs/install-lxc.md](docs/install-lxc.md)). Then create the account with the setup token, enable 2FA, and add the "Homepage Config" tile to Homepage ([docs/configuration.md](docs/configuration.md#link-it-from-homepage)).
 - [ ] **Owner:** if the LXC is unprivileged without nesting, enable nesting to keep the systemd sandbox (the installer warns if it had to disable it).
 - [ ] Optional (Docker only): a "restart Homepage" button. This would need Docker socket access, so it was skipped for security. LXC installs have it.
 - [ ] Optional: comment-preserving form saves (edit the YAML Document AST instead of re-serialising).
@@ -354,3 +358,4 @@ The app never gets root rights:
 | ---- | ------ |
 | 2026-10-25 | v1.0.0: initial build: research, server, UI (11 pages), widget catalog, icons, tests, Docker, integration verification, docs. |
 | 2026-10-25 | v1.1.0 (first public release): LXC/no-Docker install (`scripts/install-lxc.sh`), Restart Homepage button (systemd path unit), direct `.env` editing, write fallback for root-owned files, 5 new tests (22 total), README rewritten with all installation options. |
+| 2026-10-25 | Docs: README shortened to an overview with screenshots. Install methods split into `docs/install-lxc.md`, `docs/install-docker.md` and `docs/install-manual.md`, plus `docs/configuration.md` and `docs/troubleshooting.md`. |
