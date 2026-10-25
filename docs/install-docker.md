@@ -2,7 +2,7 @@
 
 ← [Back to README](../README.md)
 
-Image: `ghcr.io/ckegels/homepage-config` (amd64 and arm64). Tags: `latest`, `1.1`, `1.1.0`.
+Image: `ghcr.io/ckegels/homepage-config` (amd64 and arm64). Tags: `latest`, `1.1`, `1.1.1`.
 
 Homepage Config needs **the same folders** as your Homepage container:
 

@@ -2,7 +2,7 @@
 
 This is the living document for the project. It records why the tool exists, how it is built, how every process works, what has been verified, and what is left to do. Update the **Progress** and **Changelog** sections whenever something changes.
 
-Last updated: 2026-10-25 · Version 1.1.0 · Deployment target: **Proxmox LXC without Docker** (Docker still supported) · Widget catalog built from Homepage `main` (package 2.6.0, released image tested: v2.7.0)
+Last updated: 2026-10-25 · Version 1.1.1 · Deployment target: **Proxmox LXC without Docker** (Docker still supported) · Widget catalog built from Homepage **v2.7.0** (tag)
 
 ---
 
@@ -359,3 +359,4 @@ The app never gets root rights:
 | 2026-10-25 | v1.0.0: initial build: research, server, UI (11 pages), widget catalog, icons, tests, Docker, integration verification, docs. |
 | 2026-10-25 | v1.1.0 (first public release): LXC/no-Docker install (`scripts/install-lxc.sh`), Restart Homepage button (systemd path unit), direct `.env` editing, write fallback for root-owned files, 5 new tests (22 total), README rewritten with all installation options. |
 | 2026-10-25 | Docs: README shortened to an overview with screenshots. Install methods split into `docs/install-lxc.md`, `docs/install-docker.md` and `docs/install-manual.md`, plus `docs/configuration.md` and `docs/troubleshooting.md`. |
+| 2026-10-25 | v1.1.1: widget catalog rebuilt from the Homepage **v2.7.0** tag instead of `main`. The only difference: the Unraid widget docs say the API key needs the VIEWER role (not ADMIN). No settings, service or info-widget options changed between the versions, and Node 22 still works. The UI now shows "for Homepage 2.7.0". |
