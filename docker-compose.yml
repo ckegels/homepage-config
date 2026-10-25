@@ -1,0 +1,48 @@
+# Homepage + Homepage Config side by side.
+# Both containers share the same config folder; uploaded icons are shared too.
+#
+#   mkdir -p homepage/config homepage/icons homepage-config-data
+#   sudo chown -R 1000:1000 homepage homepage-config-data    # or match PUID/PGID
+#   docker compose up -d
+#   docker logs homepage-config      # shows the one-time setup token
+services:
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    ports:
+      - 3000:3000
+    volumes:
+      - ./homepage/config:/app/config
+      - ./homepage/icons:/app/public/icons # icons uploaded in Homepage Config
+    environment:
+      HOMEPAGE_ALLOWED_HOSTS: localhost:3000 # add your domain / ip:port
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+    restart: unless-stopped
+
+  homepage-config:
+    image: ghcr.io/ckegels/homepage-config:latest
+    # build: .            # build locally instead of pulling
+    container_name: homepage-config
+    user: "${PUID:-1000}:${PGID:-1000}" # must be able to write the config folder
+    ports:
+      - 3100:3100 # put this behind your reverse proxy / VPN, see README
+    volumes:
+      - ./homepage/config:/app/config # SAME folder as Homepage's /app/config
+      - ./homepage/icons:/data/icons # SAME folder as Homepage's /app/public/icons
+      - ./homepage-config-data:/data # account, sessions key, backups, caches
+    environment:
+      HOMEPAGE_URL: http://localhost:3000 # where you open Homepage (for links)
+      # PUBLIC_URL: https://config.example.com  # external URL of this UI
+      # TRUST_PROXY: "true"                     # when behind a reverse proxy
+      # COOKIE_SECURE: "true"                   # force Secure cookies (HTTPS)
+      # SESSION_HOURS: "12"
+      # ADMIN_PASSWORD: ""                      # optional: skip the setup screen
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
