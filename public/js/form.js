@@ -38,7 +38,7 @@ export function renderControl(spec, v, set, id, whole, context) {
       return html`<${Select} id=${id} value=${v} onChange=${set} options=${options} placeholder=${spec.placeholder ?? "Default"} />`;
     }
     case "icon":
-      return html`<${IconInput} id=${id} value=${v} onChange=${set} />`;
+      return html`<${IconInput} id=${id} value=${v} onChange=${set} suggestName=${context?.suggestIconName} />`;
     case "textarea":
       return html`<${TextArea} id=${id} value=${v} onChange=${set} placeholder=${placeholder} rows=${spec.rows} />`;
     case "list":

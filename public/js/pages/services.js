@@ -234,7 +234,7 @@ function ServiceEditor({ service, onChange, onDelete, onDuplicate, onMoveTo, gro
           ${(id) => html`<${TextInput} id=${id} value=${service.name} onChange=${(v) => onChange({ ...service, name: v ?? "" })} />`}
         <//>
       </div>
-      <${SchemaForm} schema=${SERVICE_FIELDS} value=${props} onChange=${setProps} context=${context} />
+      <${SchemaForm} schema=${SERVICE_FIELDS} value=${props} onChange=${setProps} context=${{ ...context, suggestIconName: service.name }} />
       <${ExtraYaml} schema=${SERVICE_FIELDS} value=${props} onChange=${setProps} alsoKnown=${SERVICE_KNOWN} label="Other service options (YAML)" />
     <//>
 

@@ -363,7 +363,7 @@ let openIconPicker = () => {};
 export const setIconPickerOpener = (fn) => (openIconPicker = fn);
 
 /** Icon reference input with live preview and a picker (uploads, Dashboard Icons, MDI, Simple Icons, selfh.st). */
-export function IconInput({ value, onChange, id, placeholder = "e.g. sonarr.png, mdi-home, si-github, /icons/my.png" }) {
+export function IconInput({ value, onChange, id, suggestName, placeholder = "e.g. sonarr.png, mdi-home, si-github, /icons/my.png" }) {
   return html`<div class="icon-input">
     <${IconPreview} icon=${value} size=${36} />
     <input
@@ -374,7 +374,7 @@ export function IconInput({ value, onChange, id, placeholder = "e.g. sonarr.png,
       spellcheck=${false}
       onInput=${(e) => onChange(e.target.value === "" ? undefined : e.target.value)}
     />
-    <button type="button" class="btn btn-s" onClick=${() => openIconPicker((ref) => onChange(ref))}>Choose…</button>
+    <button type="button" class="btn btn-s" onClick=${() => openIconPicker((ref) => onChange(ref), { suggestName })}>Choose…</button>
     ${value && html`<button type="button" class="icon-btn" title="Clear" onClick=${() => onChange(undefined)}>✕</button>`}
   </div>`;
 }

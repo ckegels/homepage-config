@@ -30,6 +30,25 @@ export function cleanIconName(name) {
   return base;
 }
 
+// Turn a service/bookmark name or a file name into a bare icon base (no extension).
+function toBase(name) {
+  return String(name || "")
+    .normalize("NFKD")
+    .replace(/\.[a-z0-9]+$/i, "") // drop an extension if present
+    .replace(/[^\w.-]+/g, "-")
+    .replace(/^[-.]+|[-.]+$/g, "")
+    .replace(/-+/g, "-")
+    .toLowerCase()
+    .slice(0, 100);
+}
+
+// First free "base.ext", "base-2.ext", "base-3.ext", … in the icons folder.
+function uniqueIconName(base, ext) {
+  let candidate = `${base}${ext}`;
+  for (let n = 2; existsSync(join(env.iconsDir, candidate)); n += 1) candidate = `${base}-${n}${ext}`;
+  return candidate;
+}
+
 // Magic-number check so a renamed HTML/JS file can't be stored as an "image".
 function sniff(buf, ext) {
   const hex = buf.subarray(0, 12).toString("hex");
@@ -76,17 +95,33 @@ export function listLocalIcons() {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export function saveIcon(rawName, buf, { overwrite = false } = {}) {
-  const name = cleanIconName(rawName);
-  const ext = extname(name);
+/**
+ * Store an icon.
+ *  - `baseName`  optional preferred name (e.g. the service/bookmark name). The
+ *               file keeps its own extension; the stem comes from baseName.
+ *  - `dedupe`   on a name clash, store under the next free "name-2.ext" instead
+ *               of failing. Used by the picker so a drop never overwrites.
+ *  - `overwrite` replace an existing file of the same name.
+ */
+export function saveIcon(rawName, buf, { overwrite = false, dedupe = false, baseName } = {}) {
+  const ext = extname(String(rawName || "")).toLowerCase();
+  if (!ICON_TYPES[ext]) throw new HttpError(400, `Unsupported icon type "${ext || "none"}". Use ${Object.keys(ICON_TYPES).join(", ")}.`);
+  let base = toBase(baseName) || toBase(rawName) || "icon";
+  let name = `${base}${ext}`;
+  if (!NAME_RE.test(name)) {
+    base = "icon";
+    name = `icon${ext}`;
+  }
   if (!buf?.length) throw new HttpError(400, "Empty file.");
   if (buf.length > MAX_ICON_BYTES) throw new HttpError(413, "Icon is larger than 5 MB.");
   if (!sniff(buf, ext)) throw new HttpError(400, `File content does not look like a ${ext} image.`);
   if (ext === ".svg") buf = Buffer.from(sanitizeSvg(buf.toString("utf8")));
   mkdirSync(env.iconsDir, { recursive: true });
-  const target = join(env.iconsDir, name);
-  if (existsSync(target) && !overwrite) throw new HttpError(409, `An icon named "${name}" already exists.`, { exists: true });
-  writeFileSync(target, buf);
+  if (existsSync(join(env.iconsDir, name)) && !overwrite) {
+    if (dedupe) name = uniqueIconName(base, ext);
+    else throw new HttpError(409, `An icon named "${name}" already exists.`, { exists: true });
+  }
+  writeFileSync(join(env.iconsDir, name), buf);
   return { name, size: buf.length };
 }
 

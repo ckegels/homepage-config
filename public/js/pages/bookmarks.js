@@ -126,6 +126,7 @@ export function BookmarksPage() {
           <${SchemaForm}
             schema=${BOOKMARK_FIELDS}
             value=${bookmark.props}
+            context=${{ suggestIconName: bookmark.name }}
             onChange=${(props) => setGroup(sel.g, { ...group, items: group.items.map((b, j) => (j === sel.b ? { ...b, props } : b)) })}
           />
           <${ExtraYaml}

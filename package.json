@@ -1,6 +1,6 @@
 {
   "name": "homepage-config",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Secure web UI to configure gethomepage/homepage: every option, icons, backups.",
   "main": "server/index.js",
   "scripts": {

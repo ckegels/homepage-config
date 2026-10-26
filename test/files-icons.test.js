@@ -51,3 +51,22 @@ test("icons: content sniffing, svg sanitizing, name cleaning", () => {
   assert.throws(() => icons.saveIcon("my-logo.svg", Buffer.from("<svg/>")), /already exists/);
   assert.equal(icons.readIcon("../auth.json"), null);
 });
+
+test("icons: name after a service and dedupe instead of overwriting", () => {
+  const png = Buffer.from("89504e470d0a1a0a0000000d49484452", "hex");
+  // baseName (the service name) sets the stem; the file keeps its own extension.
+  assert.equal(icons.saveIcon("whatever-dropped.png", png, { baseName: "Sonarr" }).name, "sonarr.png");
+  // same service again, dropped file already there -> deduped, original kept.
+  assert.equal(icons.saveIcon("another.png", png, { baseName: "Sonarr", dedupe: true }).name, "sonarr-2.png");
+  assert.equal(icons.saveIcon("again.png", png, { baseName: "Sonarr", dedupe: true }).name, "sonarr-3.png");
+  // messy names are cleaned.
+  assert.equal(icons.saveIcon("x.png", png, { baseName: "Pi-hole DNS!" }).name, "pi-hole-dns.png");
+  // an unusable service name falls back to the dropped file's name…
+  assert.equal(icons.saveIcon("logo.png", png, { baseName: "🎬" }).name, "logo.png");
+  // …and only when both are unusable does it become "icon".
+  assert.equal(icons.saveIcon("🎬.png", png, { baseName: "🎬" }).name, "icon.png");
+  // without dedupe a clash still fails (management page keeps the replace prompt).
+  assert.throws(() => icons.saveIcon("x.png", png, { baseName: "Sonarr" }), /already exists/);
+  // no baseName -> falls back to the file name, as before.
+  assert.equal(icons.saveIcon("Radarr.png", png).name, "radarr.png");
+});

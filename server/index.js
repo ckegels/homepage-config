@@ -295,7 +295,11 @@ route("GET", "/api/icons", () => ({ icons: icons.listLocalIcons(), ...getAppSett
 route("POST", "/api/icons/upload", async (req) => {
   const url = new URL(req.url, "http://x");
   const buf = await readBody(req, icons.MAX_ICON_BYTES + 1);
-  return icons.saveIcon(url.searchParams.get("name"), buf, { overwrite: url.searchParams.get("overwrite") === "1" });
+  return icons.saveIcon(url.searchParams.get("name"), buf, {
+    overwrite: url.searchParams.get("overwrite") === "1",
+    dedupe: url.searchParams.get("rename") === "1",
+    baseName: url.searchParams.get("basename") || undefined,
+  });
 });
 route("POST", "/api/icons/import", async (req) => {
   const { url, name, overwrite } = await json(req);

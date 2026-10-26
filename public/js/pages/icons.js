@@ -49,18 +49,31 @@ function useCatalog(set) {
 
 // ---------- uploads ----------
 
-async function uploadFiles(fileList, onDone) {
-  for (const file of fileList) {
+/**
+ * Upload dropped/selected files.
+ *  - dedupe: never overwrite; the server picks the next free name instead.
+ *  - suggestName: name the icon after this (a service/bookmark name). Only used
+ *    when a single file is added, so dropping several keeps their own names.
+ */
+async function uploadFiles(fileList, onDone, { dedupe = false, suggestName } = {}) {
+  const files = [...fileList];
+  const useSuggest = suggestName && files.length === 1;
+  for (const file of files) {
+    const params = new URLSearchParams({ name: file.name });
+    if (dedupe) params.set("rename", "1");
+    if (useSuggest) params.set("basename", suggestName);
     try {
       let res;
       try {
-        res = await api(`/api/icons/upload?name=${encodeURIComponent(file.name)}`, { method: "POST", raw: file });
+        res = await api(`/api/icons/upload?${params}`, { method: "POST", raw: file });
       } catch (e) {
-        if (e.status === 409 && confirmDialog(`"${file.name}" already exists. Replace it?`)) {
-          res = await api(`/api/icons/upload?name=${encodeURIComponent(file.name)}&overwrite=1`, { method: "POST", raw: file });
+        // Only the management page (no dedupe) offers to replace.
+        if (!dedupe && e.status === 409 && confirmDialog(`"${file.name}" already exists. Replace it?`)) {
+          params.set("overwrite", "1");
+          res = await api(`/api/icons/upload?${params}`, { method: "POST", raw: file });
         } else throw e;
       }
-      toast(`Uploaded ${res.name}`);
+      toast(`Saved ${res.name}`);
       onDone?.(res);
     } catch (e) {
       toast(`${file.name}: ${e.message}`, "error");
@@ -68,9 +81,10 @@ async function uploadFiles(fileList, onDone) {
   }
 }
 
-function DropZone({ onUploaded, compact }) {
+function DropZone({ onUploaded, compact, dedupe, suggestName }) {
   const input = useRef();
   const [over, setOver] = useState(false);
+  const opts = { dedupe, suggestName };
   return html`<div
     class=${over ? "dropzone over" : "dropzone"}
     onDragOver=${(e) => (e.preventDefault(), setOver(true))}
@@ -78,13 +92,13 @@ function DropZone({ onUploaded, compact }) {
     onDrop=${(e) => {
       e.preventDefault();
       setOver(false);
-      uploadFiles([...e.dataTransfer.files], onUploaded);
+      uploadFiles([...e.dataTransfer.files], onUploaded, opts);
     }}
     onClick=${() => input.current.click()}
     role="button"
     tabindex="0"
   >
-    <input ref=${input} type="file" multiple accept=".png,.svg,.webp,.jpg,.jpeg,.gif,.ico,.avif" hidden onChange=${(e) => (uploadFiles([...e.target.files], onUploaded), (e.target.value = ""))} />
+    <input ref=${input} type="file" multiple accept=".png,.svg,.webp,.jpg,.jpeg,.gif,.ico,.avif" hidden onChange=${(e) => (uploadFiles([...e.target.files], onUploaded, opts), (e.target.value = ""))} />
     <strong>${compact ? "Upload icon" : "Drop icons here or click to upload"}</strong>
     <span class="muted small">PNG, SVG, WebP, JPG, GIF, ICO, AVIF · max 5 MB</span>
   </div>`;
@@ -311,8 +325,8 @@ export function IconsPage({ meta }) {
   <//>`;
 }
 
-/** Modal opened from any icon field. */
-export function IconPicker({ onPick, onClose }) {
+/** Modal opened from any icon field. `suggestName` is the service/bookmark name. */
+export function IconPicker({ onPick, onClose, suggestName }) {
   const [tab, setTab] = useState("mine");
   const [data, reload] = useLocalIcons();
   const [url, setUrl] = useState("");
@@ -320,8 +334,11 @@ export function IconPicker({ onPick, onClose }) {
     <${Tabs} tabs=${[{ id: "mine", label: "My icons" }, ...SETS.map((s) => ({ id: s.id, label: s.label })), { id: "url", label: "URL" }]} value=${tab} onChange=${setTab} />
     ${tab === "mine" &&
     html`<div class="stack-s">
+      ${suggestName && html`<p class="muted small">An uploaded icon is named after “${suggestName}”, keeping its file type. A number is added if that name is taken, so nothing is overwritten.</p>`}
       <${DropZone}
         compact
+        dedupe
+        suggestName=${suggestName}
         onUploaded=${(res) => {
           reload();
           if (res?.name) onPick(iconRef("local", res, data ?? {}));

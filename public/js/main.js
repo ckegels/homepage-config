@@ -69,7 +69,7 @@ function Shell({ state, onLogout }) {
       }
     };
     window.addEventListener("beforeunload", onBeforeUnload);
-    setIconPickerOpener((cb) => setPicker({ cb }));
+    setIconPickerOpener((cb, opts = {}) => setPicker({ cb, ...opts }));
     get("/api/meta").then(setMeta).catch(() => {});
     return () => {
       window.removeEventListener("hashchange", onHash);
@@ -117,6 +117,7 @@ function Shell({ state, onLogout }) {
     ${picker &&
     html`<${IconPicker}
       meta=${meta}
+      suggestName=${picker.suggestName}
       onClose=${() => setPicker(null)}
       onPick=${(ref) => {
         picker.cb(ref);
