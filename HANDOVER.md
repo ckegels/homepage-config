@@ -2,7 +2,7 @@
 
 This is the living document for the project. It records why the tool exists, how it is built, how every process works, what has been verified, and what is left to do. Update the **Progress** and **Changelog** sections whenever something changes.
 
-Last updated: 2026-10-25 · Version 1.1.2 · Deployment target: **Proxmox LXC without Docker** (Docker still supported) · Widget catalog built from Homepage **v2.7.0** (tag)
+Last updated: 2026-10-26 · Version 1.1.2 · Deployment target: **Proxmox LXC without Docker** (Docker still supported) · Widget catalog built from Homepage **v2.7.0** (tag)
 
 ---
 
@@ -91,7 +91,7 @@ Browser ──HTTPS──► reverse proxy ──► homepage-config (Node 22, :
 | `server/env.js` | Environment configuration |
 | `server/auth.js` | Setup token, scrypt hashing, HMAC sessions, lockout, TOTP |
 | `server/config-files.js` | Whitelisted config files: read, parse, validate, backup, write, restore |
-| `server/icons.js` | Icon upload/import/rename/delete, content sniffing, SVG sanitizing, remote icon catalogs |
+| `server/icons.js` | Icon upload/import/rename/delete, content sniffing, SVG sanitizing, name-after-service + dedupe, remote icon catalogs |
 | `server/envfile.js` | Read/update Homepage's `.env` (managed keys only, comments kept, backups) and the restart trigger |
 | `scripts/build-catalog.mjs` | Parses `docs/widgets/services/*.md` into the widget catalog JSON |
 | `scripts/install-lxc.sh` | LXC/systemd installer: install, update, `--fix-permissions`, `--uninstall [--purge]` |
@@ -186,6 +186,11 @@ The **Files** page edits the raw text, which keeps comments and formatting. Vali
   - Allowed extensions: png, svg, webp, jpg, gif, ico, avif.
   - The content is **sniffed** by magic bytes, so a renamed HTML file is refused.
   - SVGs are **sanitised**: scripts, foreignObject, `on*` handlers and `javascript:` links are removed.
+- **Naming (`saveIcon` options):**
+  - `baseName` (query `basename`): the stem comes from this instead of the file name, keeping the file's extension. The icon picker, when opened from a service/bookmark field, passes that service/bookmark name, so dropping `whatever.png` while editing *Sonarr* stores `sonarr.png`. An unusable name (e.g. emoji-only) falls back to the dropped file's name, then to `icon`.
+  - `dedupe` (query `rename=1`): on a name clash, store the next free `name-2.ext`, `name-3.ext`, … instead of failing with 409. The picker sets this, so a drop **never overwrites**. The standalone Icons page omits it and keeps the "replace?" prompt (deliberate management action).
+  - `overwrite` (query `overwrite=1`): replace an existing file, used only when the user confirms the replace prompt.
+  - A `suggestName` is only applied when a single file is dropped, so dropping several keeps their own names.
 - **Import from URL:** the server downloads the file (http/https only, 15 s timeout, 5 MB) and stores it the same way. Only signed-in users can do this.
 - **Serving:** `GET /icons/:name` is public and sends `CSP: sandbox`, `nosniff` and `CORP: cross-origin`. Opening an SVG directly can never run script.
 - **Browsing libraries:** the server fetches the four index files once a day and caches them in `/data/cache`, so the browser never calls GitHub/npm itself (CSP `connect-src 'self'`). Previews load from jsDelivr like Homepage does.
@@ -275,17 +280,18 @@ The app never gets root rights:
 | Forms keep unknown keys | Guarantees no data loss and covers future options. |
 | Overwrite in place + backups | Works with all mount styles, and every change can be undone. |
 | Two icon modes | Local is robust (no dependency on this app). URL is instant (no Homepage restart). |
+| Picker names icons after the service and dedupes | An uploaded icon is self-describing on disk, and a drop never silently overwrites someone else's icon. The standalone Icons page still replaces, since that's an explicit management action. |
 | LXC: shared group instead of running as root | Least privilege. The app can only touch Homepage's config, icons and `.env`. |
 | LXC: restart via systemd path unit, not sudo/polkit | Works with `NoNewPrivileges`, needs no sudo or polkit, and the app only ever touches one file. |
 | LXC: edit `.env` directly | On source installs env vars live in a file, so the "CLI only" part of Homepage can be managed from the UI too. |
 
 ## 6. Verification performed (2026-10-25)
 
-- **Unit tests:** `npm test` passes all **22 tests**:
+- **Unit tests:** `npm test` passes all **23 tests**:
   - converter round-trips (services incl. nested + multiple widgets, bookmarks, info widgets, layout map/list/nested);
   - TOTP against the RFC 6238 vector, scrypt hashing, password rules, setup-token gate, session tamper/revoke, lockout;
   - file whitelist, root-type validation, backups/restore, `{{HOMEPAGE_VAR_*}}` quoting, core-schema `yes`, stale-write rejection;
-  - icon sniffing, SVG sanitising, name cleaning and path traversal;
+  - icon sniffing, SVG sanitising, name cleaning, path traversal, and naming-after-service with dedupe;
   - `.env` parsing/quoting, in-place updates that keep comments and foreign keys, key removal, forbidden keys, newline round-trip, restart trigger and throttle.
 - **API (curl):**
   - Unauthenticated requests get 401.
@@ -312,6 +318,8 @@ The app never gets root rights:
   - An uploaded icon went from 404 to 200 after "Restart Homepage".
   - `--fix-permissions` and `--uninstall` behaved correctly, and Homepage kept running after uninstall.
   - In the browser (LXC mode), the Overview, Icons and Environment pages showed the restart button, direct `.env` mode and the save bar, with zero console errors.
+- **Icon naming (v1.1.2):** browser test against a running instance — editing *Sonarr*, dropping a file in the picker stored `sonarr.png` and set the field to `/icons/sonarr.png`; a second drop stored `sonarr-2.png` with the first kept; both on disk, no console errors.
+- **Live security self-assessment (2026-10-26):** read-only checks against the owner's running instance (authorised, their own box) plus a local instance of the same build. All passed: every `/api/*` needs auth (401); writes without the `X-HC-Request` header or from a foreign Origin are blocked (403); all security headers present; path-traversal and secret paths return the SPA shell or 404, never file contents (confirmed by reading bodies, not just status codes); admin re-claim blocked; no server banner; clean 404/400 errors with no stack traces; lockout fires after 5 failures (verified on a throwaway instance, not the live one). The one operational note: the app speaks plain HTTP, so it must stay on the LAN/VPN or behind an HTTPS reverse proxy, and 2FA should be on.
 
 ## 7. Progress
 
@@ -319,7 +327,7 @@ The app never gets root rights:
 
 - [x] Read all config, installation and widget docs. Cross-checked option names against the Homepage source.
 - [x] Server: auth (setup token, scrypt, sessions, lockout, TOTP 2FA, sign out everywhere), CSRF/Origin, CSP, whitelisted file API, backups/restore, conflict detection.
-- [x] Icons: upload (drag & drop, multi), URL import, rename, delete, sniffing, SVG sanitising, public sandboxed serving, 4 browsable libraries with search, custom colors for mdi/si, "save a copy" from the CDN, icon picker in every icon field, two reference modes.
+- [x] Icons: upload (drag & drop, multi), URL import, rename, delete, sniffing, SVG sanitising, public sandboxed serving, 4 browsable libraries with search, custom colors for mdi/si, "save a copy" from the CDN, icon picker in every icon field, two reference modes, and (v1.1.2) naming uploads after the service/bookmark with auto-dedupe.
 - [x] Pages: Overview (file status, counts, warnings), Settings (General, Appearance, Quick Launch, PWA, Providers, other keys), Layout & tabs (order, nested, all group options), Services (tree, nested groups, move/duplicate/delete, all service keys, Docker/K8s/Proxmox dropdowns, widgets), Bookmarks, Info widgets (all 13 with forms + YAML mode), Docker/K8s/Proxmox (+ Docker label generator), Files (raw editor + history), Environment & auth generator, Account & app.
 - [x] Service widget catalog generator (170 entries incl. aliases).
 - [x] Dockerfile and hardened docker-compose example.
@@ -329,11 +337,14 @@ The app never gets root rights:
 - [x] Restart Homepage from the UI (systemd path unit) on the Overview, Icons and Environment pages.
 - [x] Environment page edits Homepage's `.env` directly on LXC (with backups), plus "Save & restart".
 - [x] Published as a public repo: https://github.com/ckegels/homepage-config (GPL-3.0, same as Homepage, because the widget catalog embeds Homepage doc text). CI runs the tests on Node 20 and 22. A `v*.*.*` tag publishes a multi-arch image to `ghcr.io/ckegels/homepage-config`.
-- [x] Clean README with all installation options (LXC installer, Docker Compose, Docker next to existing Homepage, manual), plus reverse proxy, icons, settings reference, update/uninstall and troubleshooting.
+- [x] Clean README (overview + screenshots) with install methods split into `docs/install-*.md`, plus `docs/configuration.md` and `docs/troubleshooting.md`.
+- [x] Catalog kept in sync with the installed Homepage: rebuilt from the **v2.7.0** tag (v1.1.1).
+- [x] **Deployed and running** on the owner's LXC (`192.168.2.123:3100`), verified reachable and passing a live read-only security self-assessment (§6).
 
 ### Next steps / ideas 🔜
 
-- [ ] **Owner:** on the Homepage LXC, run `git clone https://github.com/ckegels/homepage-config.git /root/homepage-config && cd /root/homepage-config && ./scripts/install-lxc.sh` ([docs/install-lxc.md](docs/install-lxc.md)). Then create the account with the setup token, enable 2FA, and add the "Homepage Config" tile to Homepage ([docs/configuration.md](docs/configuration.md#link-it-from-homepage)).
+- [ ] **Owner:** update the running instance to the latest release — `cd /root/homepage-config && git pull && ./scripts/install-lxc.sh` (currently on an older build; v1.1.2 is published). Keep 2FA on.
+- [ ] **Owner:** confirm port 3100 is **not** exposed beyond the LAN/VPN (it's plain HTTP). Add an HTTPS reverse proxy if remote access is ever wanted.
 - [ ] **Owner:** if the LXC is unprivileged without nesting, enable nesting to keep the systemd sandbox (the installer warns if it had to disable it).
 - [ ] Optional (Docker only): a "restart Homepage" button. This would need Docker socket access, so it was skipped for security. LXC installs have it.
 - [ ] Optional: comment-preserving form saves (edit the YAML Document AST instead of re-serialising).
@@ -341,7 +352,6 @@ The app never gets root rights:
 - [ ] Optional: live preview iframe of Homepage. This needs Homepage to allow framing.
 - [ ] Optional: a highlight-rule builder UI. Highlighting is a YAML field with an example today.
 - [ ] Optional: Kubernetes annotation generator (Docker labels exist).
-- [ ] Optional: publish the image to a registry and add CI (tests + catalog refresh).
 
 ### Known limitations ⚠️
 
