@@ -339,7 +339,7 @@ The app never gets root rights:
 - [x] Published as a public repo: https://github.com/ckegels/homepage-config (GPL-3.0, same as Homepage, because the widget catalog embeds Homepage doc text). CI runs the tests on Node 20 and 22. A `v*.*.*` tag publishes a multi-arch image to `ghcr.io/ckegels/homepage-config`.
 - [x] Clean README (overview + screenshots) with install methods split into `docs/install-*.md`, plus `docs/configuration.md` and `docs/troubleshooting.md`.
 - [x] Catalog kept in sync with the installed Homepage: rebuilt from the **v2.7.0** tag (v1.1.1).
-- [x] **Deployed and running** on the owner's LXC (`192.168.2.123:3100`), verified reachable and passing a live read-only security self-assessment (§6).
+- [x] **Deployed and running** on the owner's Homepage LXC, verified reachable and passing a live read-only security self-assessment (§6).
 
 ### Next steps / ideas 🔜
 
